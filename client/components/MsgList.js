@@ -1,12 +1,12 @@
 import { useEffect, useState, useRef } from "react"
 import { useRouter } from 'next/router'
-import { useQueryClient, useMutation, useQuery } from 'react-query'
+import { useQueryClient, useMutation, useQuery, useInfiniteQuery } from 'react-query'
 import MsgItem from "./MsgItem"
 import MsgInput from "./MsgInput"
 // import fetcher from "../fetcher"
 import { fetcher, QueryKeys } from "../queryClient"
 import { GET_MESSAGES, CREATE_MESSAGE, UPDATE_MESSAGE, DELETE_MESSAGE } from "../graphql/message"
-// import useInfiniteScroll from "../hooks/useInfiniteScroll"
+import useInfiniteScroll from "../hooks/useInfiniteScroll"
 
 // const userIds = ['kim', 'lee']
 // const getRandomUserId = () => userIds[Math.round(Math.random())]
@@ -28,8 +28,8 @@ const MsgList = ({ smsgs, users }) => {
   const [editingId, setEditingId] = useState(null)
 
   // const [hasNext, setHasNext] = useState(true)
-  // const fetchMoreEl = useRef(null)
-  // const intersecting = useInfiniteScroll(fetchMoreEl)
+  const fetchMoreEl = useRef(null)
+  const intersecting = useInfiniteScroll(fetchMoreEl)
 
   const { mutate: onCreate } = useMutation(({ text }) => fetcher(CREATE_MESSAGE, { text, userId }), {
     onSuccess: ({ createMessage }) => {
@@ -128,13 +128,24 @@ const MsgList = ({ smsgs, users }) => {
 
   const doneEdit = () => setEditingId(null)
 
-  const { data, error, isError } = useQuery(QueryKeys.MESSAGES, () => fetcher(GET_MESSAGES)) // stale: 옛것. 미리 받아놓은 정보
+  const { data, error, isError, fetchNextPage, hasNextPage } = useInfiniteQuery(
+    QueryKeys.MESSAGES,
+    ({ pageParam = '' }) => fetcher(GET_MESSAGES, { cursor: pageParam }), // stale: 옛것. 미리 받아놓은 정보
+    {
+      getNextPageParam: ({ messages }) => {
+        return messages?.[messages.length - 1]?.id
+      }
+    }
+  )
 
   useEffect(() => {
-    if (!data?.messages) return
+    if (!data?.pages) return
     console.log('msgs changed');
-    setMsgs(data.messages)
-  }, [data?.messages])
+    // const data.pages = [{ messages: [...] }, { messages: [...] }] => [...]
+    const mergedMsgs = data.pages.flatMap(d => d.messages)
+    console.log({ mergedMsgs });
+    setMsgs(mergedMsgs)
+  }, [data?.pages])
 
 
   if (isError) {
@@ -151,11 +162,12 @@ const MsgList = ({ smsgs, users }) => {
   //   setMsgs(msgs => [...msgs, ...newMsgs])
   // }
 
-  // useEffect(() => {
-  //   if (intersecting && hasNext) getMessages()
-  // }, [intersecting])
+  useEffect(() => {
+    if (intersecting && hasNextPage) fetchNextPage()
+  }, [intersecting, hasNextPage])
 
   // console.log({ intersecting, hasNext, msgs })
+  // console.log({ data })
 
   return (
     <>
@@ -177,7 +189,7 @@ const MsgList = ({ smsgs, users }) => {
           )
         })}
       </ul>
-      {/* <div ref={fetchMoreEl} /> */}
+      <div ref={fetchMoreEl} />
     </>
   )
 }
