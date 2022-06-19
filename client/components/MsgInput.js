@@ -9,7 +9,8 @@ const MsgInput = ({ mutate, text = '', id = undefined }) => {
     e.stopPropagation()
     const text = textRef.current.value
     textRef.current.value = ''
-    mutate(text ,id)
+    // mutate(text, id)
+    mutate({ text, id })
   }
 
   return (

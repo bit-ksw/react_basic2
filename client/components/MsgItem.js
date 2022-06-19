@@ -7,7 +7,7 @@ const MsgItem = ({id, text, userId, timestamp, onDelete, startEdit, isEditing, o
         <sub>
           id: {id}<br />
           userId: {userId}<br />
-          userId: {user.nickname}<br />
+          {/* userId: {user.nickname}<br /> */}
           text: {text}<br />
           timestamp: {timestamp}
         </sub>
